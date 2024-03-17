@@ -56,6 +56,11 @@ impl Iterator for Incoming<'_> {
     /// Returns None if the listener is `cancel()`led.
     fn next(&mut self) -> Option<Self::Item> {
         let stream = self.listener.inner.accept().map(|p| p.0);
-        todo!()
+        if stream.is_ok() {
+            if self.listener.is_canceled.load(Ordering::Acquire) {
+                return None;
+            }
+        }
+        Some(stream)
     }
 }
