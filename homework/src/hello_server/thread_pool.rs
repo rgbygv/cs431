@@ -80,8 +80,41 @@ impl ThreadPool {
     /// Panics if `size` is 0.
     pub fn new(size: usize) -> Self {
         assert!(size > 0);
-
-        todo!()
+        let (job_sender, job_receiver) = unbounded::<Job>();
+        let pool_inner = Arc::new(ThreadPoolInner {
+            job_count: Mutex::new(0),
+            empty_condvar: Condvar::new(),
+        });
+        let mut _workers = vec![];
+        for i in 0..size {
+            let job_receiver = job_receiver.clone();
+            let pool_inner_clone = Arc::clone(&pool_inner);
+            let thread = thread::spawn(move || loop {
+                let job = job_receiver.recv();
+                match job {
+                    Ok(job) => {
+                        pool_inner_clone.start_job();
+                        println!("[worker {}] starts a job", i);
+                        (job.0)();
+                        pool_inner_clone.finish_job();
+                        println!("[worker {}] finishes a job", i);
+                    }
+                    Err(crossbeam_channel::RecvError) => {
+                        // This will happen if all `ThreadPool` clones are dropped.
+                        break;
+                    }
+                }
+            });
+            _workers.push(Worker {
+                _id: i,
+                thread: Some(thread),
+            });
+        }
+        Self {
+            _workers,
+            pool_inner,
+            job_sender: Some(job_sender),
+        }
     }
 
     /// Execute a new job in the thread pool.
@@ -89,14 +122,17 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static,
     {
-        todo!()
+        let job = Box::new(f);
+        if let Some(sender) = &self.job_sender {
+            sender.send(Job(job)).expect("Failed to send job to worker")
+        }
     }
 
     /// Block the current thread until all jobs in the pool have been executed.
     ///
     /// NOTE: This method has nothing to do with `JoinHandle::join`.
     pub fn join(&self) {
-        todo!()
+        self.pool_inner.wait_empty()
     }
 }
 
@@ -104,6 +140,6 @@ impl Drop for ThreadPool {
     /// When dropped, all worker threads' `JoinHandle` must be `join`ed. If the thread panicked,
     /// then this function should panic too.
     fn drop(&mut self) {
-        todo!()
+        self.job_sender.take();
     }
 }
