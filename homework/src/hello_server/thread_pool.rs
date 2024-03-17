@@ -20,7 +20,9 @@ impl Drop for Worker {
     ///
     /// NOTE: The thread is detached if not `join`ed explicitly.
     fn drop(&mut self) {
-        todo!()
+        if let Some(thread) = self.thread.take() {
+            thread.join().unwrap();
+        }
     }
 }
 
