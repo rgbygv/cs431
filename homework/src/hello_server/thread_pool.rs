@@ -20,8 +20,10 @@ impl Drop for Worker {
     ///
     /// NOTE: The thread is detached if not `join`ed explicitly.
     fn drop(&mut self) {
+        println!("[worker {}] is terminating", self._id);
         if let Some(thread) = self.thread.take() {
             thread.join().unwrap();
+            println!("[worker {}] joined", self._id)
         }
     }
 }
@@ -39,12 +41,14 @@ impl ThreadPoolInner {
     fn start_job(&self) {
         let mut cnt = self.job_count.lock().unwrap();
         *cnt += 1;
+        println!("[tpool] add (job count: {})", *cnt);
     }
 
     /// Decrement the job count.
     fn finish_job(&self) {
         let mut cnt = self.job_count.lock().unwrap();
         *cnt -= 1;
+        println!("[tpool] finish (job count: {})", *cnt);
     }
 
     /// Wait until the job count becomes 0.
