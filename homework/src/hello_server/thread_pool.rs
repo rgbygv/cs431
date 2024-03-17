@@ -37,12 +37,14 @@ struct ThreadPoolInner {
 impl ThreadPoolInner {
     /// Increment the job count.
     fn start_job(&self) {
-        todo!()
+        let mut cnt = self.job_count.lock().unwrap();
+        *cnt += 1;
     }
 
     /// Decrement the job count.
     fn finish_job(&self) {
-        todo!()
+        let mut cnt = self.job_count.lock().unwrap();
+        *cnt -= 1;
     }
 
     /// Wait until the job count becomes 0.
@@ -50,7 +52,11 @@ impl ThreadPoolInner {
     /// NOTE: We can optimize this function by adding another field to `ThreadPoolInner`, but let's
     /// not care about that in this homework.
     fn wait_empty(&self) {
-        todo!()
+        let cvar = &self.empty_condvar;
+        let mut cnt = self.job_count.lock().unwrap();
+        while !*cnt == 0 {
+            cnt = cvar.wait(cnt).unwrap();
+        }
     }
 }
 
