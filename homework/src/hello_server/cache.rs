@@ -5,21 +5,21 @@ use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
 
 /// Cache that remembers the result for each key.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Cache<K, V> {
     // todo! This is an example cache type. Build your own cache type that satisfies the
     // specification for `get_or_insert_with`.
     // inner: Mutex<HashMap<K, V>>,
-    inner: RwLock<HashMap<K, V>>,
+    inner: Arc<RwLock<HashMap<K, Arc<RwLock<Option<V>>>>>>,
 }
 
-impl<K, V> Default for Cache<K, V> {
-    fn default() -> Self {
-        Self {
-            inner: RwLock::new(HashMap::new()),
-        }
-    }
-}
+// impl<K, V> Default for Cache<K, V> {
+//     fn default() -> Self {
+//         Self {
+//             inner: RwLock::new(HashMap::new()),
+//         }
+//     }
+// }
 
 impl<K: Eq + Hash + Clone, V: Clone> Cache<K, V> {
     /// Retrieve the value or insert a new one created by `f`.
@@ -37,16 +37,46 @@ impl<K: Eq + Hash + Clone, V: Clone> Cache<K, V> {
     ///
     /// [`Entry`]: https://doc.rust-lang.org/stable/std/collections/hash_map/struct.HashMap.html#method.entry
     pub fn get_or_insert_with<F: FnOnce(K) -> V>(&self, key: K, f: F) -> V {
-        {
-            let r1 = self.inner.read().unwrap();
-            if let Some(value) = r1.get(&key) {
-                return value.clone();
+        // let value = Arc::new(RwLock::new(None));
+        // let mut write_lock = self.inner.write().unwrap();
+
+        // if !write_lock.contains_key(&key) {
+        //     write_lock.insert(key.clone(), Arc::clone(&value));
+        // }
+
+        // let stored_value = write_lock.get(&key).unwrap().clone();
+        // drop(write_lock);
+
+        // {
+        //     let r = stored_value.read().unwrap();
+        //     if r.is_none() {
+        //         drop(r);
+        //         let v = f(key);
+        //         let mut w = stored_value.write().unwrap();
+        //         *w = Some(v.clone());
+        //         return v.clone();
+        //     } else {
+        //         r.clone().unwrap()
+        //     }
+
+        //     // stored_value.read().unwrap().unwrap()
+        // }
+        let mut write_lock = self.inner.write().unwrap();
+        match write_lock.entry(key.clone()) {
+            Entry::Occupied(entry) => {
+                let stored_value = entry.get().clone();
+                let read_guard = stored_value.read().unwrap();
+                read_guard.clone().unwrap()
             }
-        }
-        {
-            let mut w1 = self.inner.write().unwrap();
-            w1.entry(key.clone()).or_insert_with(|| f(key.clone()));
-            return w1.get(&key).unwrap().clone();
+            Entry::Vacant(entry) => {
+                let value = Arc::new(RwLock::new(None));
+                entry.insert(value.clone());
+                drop(write_lock);
+                let returned_value = f(key);
+                let mut write_guard = value.write().unwrap();
+                *write_guard = Some(returned_value.clone());
+                returned_value
+            }
         }
     }
 }
