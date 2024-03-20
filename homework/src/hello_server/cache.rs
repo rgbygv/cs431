@@ -47,7 +47,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Cache<K, V> {
             write_lock.insert(key.clone(), Arc::clone(&value));
         }
 
-        let stored_value = Arc::clone(&write_lock.get(&key).unwrap());
+        let stored_value = Arc::clone(write_lock.get(&key).unwrap());
 
         drop(write_lock);
 
