@@ -104,6 +104,7 @@ impl ThreadPool {
                     }
                     Err(crossbeam_channel::RecvError) => {
                         // This will happen if all `ThreadPool` clones are dropped.
+                        // pool_inner_clone.wait_empty();
                         break;
                     }
                 }
@@ -144,5 +145,10 @@ impl Drop for ThreadPool {
     /// then this function should panic too.
     fn drop(&mut self) {
         self.job_sender.take();
+        for worker in &mut self._workers {
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
