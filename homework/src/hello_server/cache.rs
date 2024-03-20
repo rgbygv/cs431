@@ -9,13 +9,14 @@ use std::sync::{Arc, Mutex, RwLock};
 pub struct Cache<K, V> {
     // todo! This is an example cache type. Build your own cache type that satisfies the
     // specification for `get_or_insert_with`.
-    inner: Mutex<HashMap<K, V>>,
+    // inner: Mutex<HashMap<K, V>>,
+    inner: RwLock<HashMap<K, V>>,
 }
 
 impl<K, V> Default for Cache<K, V> {
     fn default() -> Self {
         Self {
-            inner: Mutex::new(HashMap::new()),
+            inner: RwLock::new(HashMap::new()),
         }
     }
 }
@@ -36,9 +37,16 @@ impl<K: Eq + Hash + Clone, V: Clone> Cache<K, V> {
     ///
     /// [`Entry`]: https://doc.rust-lang.org/stable/std/collections/hash_map/struct.HashMap.html#method.entry
     pub fn get_or_insert_with<F: FnOnce(K) -> V>(&self, key: K, f: F) -> V {
-        let mut lock = self.inner.lock();
-        let mut cache = lock.as_deref_mut().unwrap();
-        cache.entry(key.clone()).or_insert_with(|| f(key.clone()));
-        cache.get(&key).unwrap().to_owned()
+        {
+            let r1 = self.inner.read().unwrap();
+            if let Some(value) = r1.get(&key) {
+                return value.clone();
+            }
+        }
+        {
+            let mut w1 = self.inner.write().unwrap();
+            w1.entry(key.clone()).or_insert_with(|| f(key.clone()));
+            return w1.get(&key).unwrap().clone();
+        }
     }
 }
