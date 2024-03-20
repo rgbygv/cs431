@@ -20,10 +20,10 @@ impl Drop for Worker {
     ///
     /// NOTE: The thread is detached if not `join`ed explicitly.
     fn drop(&mut self) {
-        println!("[worker {}] is terminating", self._id);
+        // println!("[worker {}] is terminating", self._id);
         if let Some(thread) = self.thread.take() {
             thread.join().unwrap();
-            println!("[worker {}] joined", self._id)
+            // println!("[worker {}] joined", self._id)
         }
     }
 }
@@ -41,14 +41,17 @@ impl ThreadPoolInner {
     fn start_job(&self) {
         let mut cnt = self.job_count.lock().unwrap();
         *cnt += 1;
-        println!("[tpool] add (job count: {})", *cnt);
+        // println!("[tpool] add (job count: {})", *cnt);
     }
 
     /// Decrement the job count.
     fn finish_job(&self) {
         let mut cnt = self.job_count.lock().unwrap();
         *cnt -= 1;
-        println!("[tpool] finish (job count: {})", *cnt);
+        if *cnt == 0 {
+            self.empty_condvar.notify_all(); // Notify all waiting threads that job count is 0
+        }
+        // println!("[tpool] finish (job count: {})", *cnt);
     }
 
     /// Wait until the job count becomes 0.
@@ -58,7 +61,7 @@ impl ThreadPoolInner {
     fn wait_empty(&self) {
         let cvar = &self.empty_condvar;
         let mut cnt = self.job_count.lock().unwrap();
-        while !*cnt == 0 {
+        while *cnt > 0 {
             cnt = cvar.wait(cnt).unwrap();
         }
     }
@@ -94,10 +97,10 @@ impl ThreadPool {
                 match job {
                     Ok(job) => {
                         pool_inner_clone.start_job();
-                        println!("[worker {}] starts a job", i);
+                        // println!("[worker {}] starts a job", i);
                         (job.0)();
                         pool_inner_clone.finish_job();
-                        println!("[worker {}] finishes a job", i);
+                        // println!("[worker {}] finishes a job", i);
                     }
                     Err(crossbeam_channel::RecvError) => {
                         // This will happen if all `ThreadPool` clones are dropped.
