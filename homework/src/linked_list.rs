@@ -515,7 +515,11 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub fn back(&self) -> Option<&T> {
-        unsafe { self.tail.as_ref() }.map(|node| &node.element)
+        if self.tail.is_null() {
+            None
+        } else {
+            unsafe { self.tail.as_ref() }.map(|node| &node.element)
+        }
     }
 
     /// Provides a mutable reference to the back element, or `None` if the list
@@ -540,7 +544,11 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        unsafe { self.tail.as_mut() }.map(|node| &mut node.element)
+        if self.tail.is_null() {
+            None
+        } else {
+            unsafe { self.tail.as_mut() }.map(|node| &mut node.element)
+        }
     }
 
     /// Adds an element first in the list.
