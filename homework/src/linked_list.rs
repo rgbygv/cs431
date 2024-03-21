@@ -146,13 +146,38 @@ impl<T> LinkedList<T> {
     /// Adds the given node to the back of the list.
     #[inline]
     fn push_back_node(&mut self, mut node: Node<T>) {
-        todo!()
+        node.next = ptr::null_mut();
+        node.prev = self.tail;
+        let node = Box::into_raw(Box::new(node));
+
+        if self.tail.is_null() {
+            self.head = node;
+        } else {
+            unsafe { (*self.tail).next = node };
+        }
+
+        self.tail = node;
+        self.len += 1;
     }
 
     /// Removes and returns the node at the back of the list.
     #[inline]
     fn pop_back_node(&mut self) -> Option<Node<T>> {
-        todo!()
+        if self.tail.is_null() {
+            return None;
+        }
+
+        let node = unsafe { Box::from_raw(self.tail) };
+        self.tail = node.prev;
+
+        if self.tail.is_null() {
+            self.head = ptr::null_mut();
+        } else {
+            unsafe { (*self.tail).next = ptr::null_mut() };
+        }
+
+        self.len -= 1;
+        Some(*node)
     }
 }
 
