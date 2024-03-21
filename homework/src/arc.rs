@@ -323,7 +323,13 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        todo!()
+        if Arc::count(&this) == 1 {
+            let data = unsafe { std::ptr::read(&this.ptr.as_ref().data) };
+            mem::forget(this);
+            Ok(data)
+        } else {
+            Err(this)
+        }
     }
 }
 
