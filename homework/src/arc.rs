@@ -436,7 +436,15 @@ impl<T> Drop for Arc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
-        todo!()
+        let inner = self.inner();
+        let old_rc = inner.count.fetch_sub(1, Ordering::AcqRel);
+        if old_rc != 1 {
+            return;
+        }
+        unsafe {
+            let inner = Box::from_raw(self.ptr.as_ptr());
+            drop(inner);
+        }
     }
 }
 
