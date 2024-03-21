@@ -727,7 +727,7 @@ impl<T> IterMut<'_, T> {
                 if !prev.is_null() {
                     let node = Box::into_raw(Box::new(Node {
                         next: self.head,
-                        prev: prev,
+                        prev,
                         element,
                     }));
                     (*prev).next = node;
