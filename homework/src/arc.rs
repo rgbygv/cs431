@@ -209,14 +209,18 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        todo!()
+        if this.is_unique() {
+            unsafe { Some(&mut (*this.ptr.as_ptr()).data) }
+        } else {
+            None
+        }
     }
 
     // Used in `get_mut` and `make_mut` to check if the given `Arc` is the unique reference to the
     // underlying data.
     #[inline]
     fn is_unique(&mut self) -> bool {
-        todo!()
+        Arc::count(self) == 1
     }
 
     /// Returns a mutable reference into the given `Arc` without any check.
@@ -268,7 +272,7 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     pub fn count(this: &Self) -> usize {
-        todo!()
+        this.inner().count.load(Ordering::Acquire)
     }
 
     #[inline]
