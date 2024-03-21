@@ -389,7 +389,15 @@ impl<T> Clone for Arc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
-        todo!()
+        let inner = self.inner();
+        let old_rc = inner.count.fetch_add(1, Ordering::Relaxed);
+        if old_rc >= isize::MAX as usize {
+            panic!()
+        }
+        Self {
+            ptr: self.ptr,
+            phantom: PhantomData,
+        }
     }
 }
 
