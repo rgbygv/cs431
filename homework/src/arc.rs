@@ -361,7 +361,10 @@ impl<T: Clone> Arc<T> {
     /// ```
     #[inline]
     pub fn make_mut(this: &mut Self) -> &mut T {
-        todo!()
+        if Arc::get_mut(this).is_none() {
+            *this = Arc::new((**this).clone())
+        }
+        Arc::get_mut(this).unwrap()
     }
 }
 
