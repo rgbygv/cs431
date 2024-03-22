@@ -226,7 +226,21 @@ impl Behavior {
     ///
     /// `this` must be a valid behavior.
     unsafe fn resolve_one(this: *const Self) {
-        todo!()
+        unsafe {
+            if (*this).count.fetch_sub(1, SeqCst) != 1 {
+                // Not yet time to run the behavior thunk, return early
+                return;
+            }
+
+            // The count reached zero, safe to execute the behavior thunk
+            let thunk = std::ptr::read(&(*this).thunk);
+            thunk();
+
+            // Release all the requests associated with this behavior
+            for r in &(*this).requests {
+                r.release();
+            }
+        }
     }
 }
 
