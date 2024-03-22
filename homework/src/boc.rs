@@ -58,7 +58,20 @@ impl Request {
     /// `behavior` must be a valid raw pointer to the behavior for `self`, and this should be the
     /// only enqueueing of this request and behavior.
     unsafe fn start_enqueue(&self, behavior: *const Behavior) {
-        todo!()
+        let last = self.target.last();
+        let prev = last.swap(self as *const _ as *mut Request, SeqCst);
+        if prev.is_null() {
+            unsafe {
+                Behavior::resolve_one(behavior);
+            }
+            return;
+        }
+        unsafe {
+            while !(*prev).scheduled.load(SeqCst) {
+                spin_loop()
+            }
+            (*prev).next.store(behavior as _, SeqCst);
+        }
     }
 
     /// Finish the second phase of the 2PL enqueue operation.
