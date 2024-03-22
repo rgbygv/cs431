@@ -82,7 +82,7 @@ impl Request {
     ///
     /// All enqueues for smaller requests on this cown must have been completed.
     unsafe fn finish_enqueue(&self) {
-        todo!()
+        self.scheduled.store(true, SeqCst)
     }
 
     /// Release the cown to the next behavior.
