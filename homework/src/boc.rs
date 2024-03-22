@@ -261,7 +261,13 @@ impl Behavior {
         C: CownPtrs + Send + 'static,
         F: for<'l> Fn(C::CownRefs<'l>) + Send + 'static,
     {
-        todo!()
+        let requests = cowns.requests();
+
+        Self {
+            thunk: Box::new(move || f(unsafe { cowns.get_mut() })),
+            count: AtomicUsize::new(requests.len() + 1),
+            requests,
+        }
     }
 }
 
