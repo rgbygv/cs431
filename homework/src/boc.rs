@@ -201,8 +201,20 @@ impl Behavior {
     ///
     /// Performs two phase locking (2PL) over the enqueuing of the requests.
     /// This ensures that the overall effect of the enqueue is atomic.
+
     fn schedule(self) {
-        todo!()
+        for r in &self.requests {
+            unsafe {
+                r.start_enqueue(&self);
+            }
+        }
+
+        for r in &self.requests {
+            unsafe {
+                r.finish_enqueue();
+            }
+        }
+        unsafe { Behavior::resolve_one(&self as *const _) }
     }
 
     /// Resolves a single outstanding request for `this`.
