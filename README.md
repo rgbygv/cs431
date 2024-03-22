@@ -187,7 +187,7 @@ Ensure you are proficient with the following development tools:
 
 ### Midterm and Final Exams (40%)
 
-- Dates & Times: To be announced (midterm and final), 13:00-15:45 (or shorter, to be confirmed)
+- Dates & Times: April 15th (Mon), June 10th (Mon), 13:00-15:00
 
 - Location: Room 2443, Building E3-1, KAIST
 
@@ -199,7 +199,7 @@ Ensure you are proficient with the following development tools:
 
 ### Attendance (?%)
 
-- A quiz must be completed on the [Course Management](https://gg.kaist.ac.kr/course/16) website for each session.
+- A quiz must be completed on the [Course Management](https://gg.kaist.ac.kr/course/19) website for each session (if any).
   **Quizzes should be completed by the end of the day.**
 
 - Failing to attend a significant number of sessions will result in an automatic grade of F.
