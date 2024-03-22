@@ -94,7 +94,19 @@ impl Request {
     ///
     /// `self` must have been actually completed.
     unsafe fn release(&self) {
-        todo!()
+        let last = self.target.last();
+        let this = self as *const _ as *mut Request;
+        if self.next.load(SeqCst).is_null() {
+            if last
+                .compare_exchange(null_mut(), this, SeqCst, SeqCst)
+                .unwrap()
+                == this
+            {
+                return;
+            }
+            while self.next.load(SeqCst).is_null() {}
+        }
+        unsafe { Behavior::resolve_one(self.next.load(SeqCst)) }
     }
 }
 
