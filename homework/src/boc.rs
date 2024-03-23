@@ -5,7 +5,7 @@ use core::fmt;
 use core::hint::spin_loop;
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering::SeqCst};
-
+use rayon::spawn;
 use std::sync::Arc;
 
 /// A trait representing a `Cown`.
@@ -104,7 +104,9 @@ impl Request {
             {
                 return;
             }
-            while self.next.load(SeqCst).is_null() {}
+            while self.next.load(SeqCst).is_null() {
+                spin_loop()
+            }
         }
         unsafe { Behavior::resolve_one(self.next.load(SeqCst)) }
     }
@@ -227,7 +229,7 @@ impl Behavior {
     /// `this` must be a valid behavior.
     unsafe fn resolve_one(this: *const Self) {
         unsafe {
-            if (*this).count.fetch_sub(1, SeqCst) != 1 {
+            if (*this).count.fetch_sub(1, SeqCst) != 0 {
                 // Not yet time to run the behavior thunk, return early
                 return;
             }
@@ -261,8 +263,8 @@ impl Behavior {
         C: CownPtrs + Send + 'static,
         F: for<'l> Fn(C::CownRefs<'l>) + Send + 'static,
     {
-        let requests = cowns.requests();
-
+        let mut requests = cowns.requests();
+        requests.sort();
         Self {
             thunk: Box::new(move || f(unsafe { cowns.get_mut() })),
             count: AtomicUsize::new(requests.len() + 1),
