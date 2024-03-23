@@ -37,6 +37,12 @@ struct ThreadPoolInner {
 }
 
 impl ThreadPoolInner {
+    fn new() -> Self {
+        Self {
+            job_count: Mutex::new(0),
+            empty_condvar: Condvar::new(),
+        }
+    }
     /// Increment the job count.
     fn start_job(&self) {
         let mut cnt = self.job_count.lock().unwrap();
@@ -144,11 +150,17 @@ impl Drop for ThreadPool {
     /// When dropped, all worker threads' `JoinHandle` must be `join`ed. If the thread panicked,
     /// then this function should panic too.
     fn drop(&mut self) {
-        self.job_sender.take();
-        for worker in &mut self._workers {
-            if let Some(thread) = worker.thread.take() {
-                thread.join().unwrap();
-            }
+        // self.job_sender.take();
+        // for worker in &mut self._workers {
+        //     if let Some(thread) = worker.thread.take() {
+        //         thread.join().unwrap();
+        //     }
+        // }
+        if let Some(job_sender) = self.job_sender.take() {
+            let _ = job_sender;
+        }
+        while let Some(worker) = self._workers.pop() {
+            let _ = worker;
         }
     }
 }
