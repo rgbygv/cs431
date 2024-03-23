@@ -65,10 +65,9 @@ impl ThreadPoolInner {
     /// NOTE: We can optimize this function by adding another field to `ThreadPoolInner`, but let's
     /// not care about that in this homework.
     fn wait_empty(&self) {
-        let cvar = &self.empty_condvar;
         let mut cnt = self.job_count.lock().unwrap();
         while *cnt > 0 {
-            cnt = cvar.wait(cnt).unwrap();
+            cnt = self.empty_condvar.wait(cnt).unwrap();
         }
     }
 }
@@ -90,22 +89,19 @@ impl ThreadPool {
     pub fn new(size: usize) -> Self {
         assert!(size > 0);
         let (job_sender, job_receiver) = unbounded::<Job>();
-        let pool_inner = Arc::new(ThreadPoolInner {
-            job_count: Mutex::new(0),
-            empty_condvar: Condvar::new(),
-        });
+        let pool_inner = Arc::new(ThreadPoolInner::new());
         let mut _workers = vec![];
         for i in 0..size {
             let job_receiver = job_receiver.clone();
-            let pool_inner_clone = Arc::clone(&pool_inner);
-            let thread = thread::spawn(move || loop {
+            let pool_inner = Arc::clone(&pool_inner);
+            let handle = thread::spawn(move || loop {
                 let job = job_receiver.recv();
                 match job {
                     Ok(job) => {
-                        pool_inner_clone.start_job();
+                        // pool_inner.start_job();
                         // println!("[worker {}] starts a job", i);
-                        (job.0)();
-                        pool_inner_clone.finish_job();
+                        job.0();
+                        pool_inner.finish_job();
                         // println!("[worker {}] finishes a job", i);
                     }
                     Err(crossbeam_channel::RecvError) => {
@@ -117,7 +113,7 @@ impl ThreadPool {
             });
             _workers.push(Worker {
                 _id: i,
-                thread: Some(thread),
+                thread: Some(handle),
             });
         }
         Self {
@@ -132,9 +128,11 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static,
     {
-        let job = Box::new(f);
+        self.pool_inner.start_job();
         if let Some(sender) = &self.job_sender {
-            sender.send(Job(job)).expect("Failed to send job to worker")
+            sender
+                .send(Job(Box::new(f)))
+                .expect("Failed to send job to worker")
         }
     }
 
