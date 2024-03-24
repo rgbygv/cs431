@@ -210,7 +210,7 @@ impl<T> Arc<T> {
     #[inline]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if this.is_unique() {
-            unsafe { Some(&mut (*this.ptr.as_ptr()).data) }
+            unsafe { Some(&mut this.ptr.as_mut().data) }
         } else {
             None
         }
