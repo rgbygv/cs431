@@ -5,7 +5,7 @@ use core::fmt;
 use core::hint::spin_loop;
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering::SeqCst};
-use rayon::spawn;
+
 use std::sync::Arc;
 
 /// A trait representing a `Cown`.
@@ -59,7 +59,7 @@ impl Request {
     /// only enqueueing of this request and behavior.
     unsafe fn start_enqueue(&self, behavior: *const Behavior) {
         let last = self.target.last();
-        let prev = last.swap(self as *const _ as *mut Request, SeqCst);
+        let prev = last.swap(self as *const Request as *mut Request, SeqCst);
         if prev.is_null() {
             unsafe {
                 Behavior::resolve_one(behavior);
@@ -95,7 +95,7 @@ impl Request {
     /// `self` must have been actually completed.
     unsafe fn release(&self) {
         let last = self.target.last();
-        let this = self as *const _ as *mut Request;
+        let this = self as *const Request as *mut Request;
         if self.next.load(SeqCst).is_null() {
             if last
                 .compare_exchange(null_mut(), this, SeqCst, SeqCst)
@@ -216,7 +216,7 @@ impl Behavior {
                 r.finish_enqueue();
             }
         }
-        unsafe { Behavior::resolve_one(&self as *const _) }
+        unsafe { Behavior::resolve_one(&self) }
     }
 
     /// Resolves a single outstanding request for `this`.
@@ -230,15 +230,8 @@ impl Behavior {
     unsafe fn resolve_one(this: *const Self) {
         unsafe {
             if (*this).count.fetch_sub(1, SeqCst) != 0 {
-                // Not yet time to run the behavior thunk, return early
                 return;
             }
-
-            // The count reached zero, safe to execute the behavior thunk
-            let thunk = std::ptr::read(&(*this).thunk);
-            thunk();
-
-            // Release all the requests associated with this behavior
             for r in &(*this).requests {
                 r.release();
             }
