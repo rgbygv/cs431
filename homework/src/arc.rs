@@ -362,10 +362,21 @@ impl<T: Clone> Arc<T> {
     /// ```
     #[inline]
     pub fn make_mut(this: &mut Self) -> &mut T {
-        if Arc::get_mut(this).is_none() {
-            *this = Arc::new((**this).clone())
+        if this.is_unique() {
+            unsafe { &mut (*this.ptr.as_ptr()).data }
+        } else {
+            // *this = Arc::new((**this).clone())
+            unsafe { this.ptr.as_mut() }
+                .count
+                .fetch_sub(1, Ordering::Release);
+
+            this.ptr = Box::leak(Box::new(ArcInner {
+                count: AtomicUsize::new(1),
+                data: T::clone(&this.inner().data),
+            }))
+            .into();
+            &mut unsafe { this.ptr.as_mut() }.data
         }
-        Arc::get_mut(this).unwrap()
     }
 }
 
