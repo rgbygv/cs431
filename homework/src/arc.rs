@@ -401,15 +401,8 @@ impl<T> Clone for Arc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
-        let inner = self.inner();
-        let old_rc = inner.count.fetch_add(1, Ordering::Relaxed);
-        if old_rc >= isize::MAX as usize {
-            panic!()
-        }
-        Self {
-            ptr: self.ptr,
-            phantom: PhantomData,
-        }
+        self.inner().count.fetch_add(1, Ordering::Relaxed);
+        Arc::from_inner(self.ptr)
     }
 }
 
@@ -448,14 +441,11 @@ impl<T> Drop for Arc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
-        let inner = self.inner();
-        let old_rc = inner.count.fetch_sub(1, Ordering::AcqRel);
-        if old_rc != 1 {
-            return;
-        }
-        unsafe {
-            let inner = Box::from_raw(self.ptr.as_ptr());
-            drop(inner);
+        if self.inner().count.fetch_sub(1, Ordering::AcqRel) == 1 {
+            // fence(Ordering::Acquire);
+            unsafe {
+                let _ = Box::from_raw(self.ptr.as_ptr());
+            }
         }
     }
 }
