@@ -146,7 +146,23 @@ impl<'l, T> Iterator for Iter<'l, T> {
 
 impl<T> Drop for FineGrainedListSet<T> {
     fn drop(&mut self) {
-        for _ in self.iter() {}
+        // let mut cursor = Cursor(self.head.lock().unwrap());
+        // unsafe {
+        //     while let Some(node) = cursor.0.as_mut() {
+        //         let _ = node.data;
+        //         let next = node.next.lock().unwrap();
+        //         cursor = Cursor(next)
+        //     }
+        // }
+        let mut current_ptr = self.head.lock().unwrap();
+        unsafe {
+            while !current_ptr.is_null() {
+                let current_box = Box::from_raw(*current_ptr);
+                let next_ptr = *current_box.next.lock().unwrap();
+                // drop(current_box);
+                *current_ptr = next_ptr;
+            }
+        }
     }
 }
 
