@@ -74,7 +74,9 @@ impl<T> FineGrainedListSet<T> {
 
 impl<T: Ord> FineGrainedListSet<T> {
     fn find(&self, key: &T) -> (bool, Cursor<'_, T>) {
-        todo!()
+        let mut cursor = Cursor(self.head.lock().unwrap());
+        let found = cursor.find(key);
+        (found, cursor)
     }
 }
 
@@ -84,11 +86,45 @@ impl<T: Ord> ConcurrentSet<T> for FineGrainedListSet<T> {
     }
 
     fn insert(&self, key: T) -> bool {
-        todo!()
+        let (found, mut cursor) = self.find(&key);
+        if found {
+            return false;
+        }
+        let mut lock = cursor.0;
+        let next = *lock;
+        let new_node = Node::new(key, next);
+        *lock = new_node;
+        true
     }
 
     fn remove(&self, key: &T) -> bool {
-        todo!()
+        let (found, mut cursor) = self.find(key);
+        if !found {
+            return false;
+        }
+        let mut lock = cursor.0;
+        // unsafe {
+        //     if let Some(node) = lock.as_mut() {
+        //         let to_remove = ptr::replace(&mut node.next, ptr::null_mut());
+
+        //         let next = node.next.lock().unwrap();
+        //         *lock = *next;
+        //     } else {
+        //         *lock = ptr::null_mut();
+        //     }
+        // }
+        unsafe {
+            if let Some(node) = (lock).as_mut() {
+                let to_remove = ptr::replace(&mut *node.next.lock().unwrap(), ptr::null_mut());
+                let next_next = (*to_remove).next.lock().unwrap();
+                let _ = mem::replace(&mut *lock, *next_next);
+                // *lock = *next_next;
+                // ptr::write(lock, *next_next);
+                // Convert the raw pointer back into a Box to deallocate it
+                let _ = Box::from_raw(to_remove);
+            }
+        }
+        true
     }
 }
 
