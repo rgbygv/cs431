@@ -146,13 +146,20 @@ impl<'l, T> Iterator for Iter<'l, T> {
     type Item = &'l T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        unsafe {
+            if let Some(node) = self.cursor.as_ref() {
+                self.cursor = node.next.lock().unwrap();
+                Some(&node.data)
+            } else {
+                None
+            }
+        }
     }
 }
 
 impl<T> Drop for FineGrainedListSet<T> {
     fn drop(&mut self) {
-        todo!()
+        for _ in self.iter() {}
     }
 }
 
