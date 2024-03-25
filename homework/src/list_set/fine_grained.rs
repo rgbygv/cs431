@@ -46,7 +46,20 @@ impl<T: Ord> Cursor<'_, T> {
     /// Moves the cursor to the position of key in the sorted list.
     /// Returns whether the value was found.
     fn find(&mut self, key: &T) -> bool {
-        todo!()
+        unsafe {
+            if let Some(node) = self.0.as_ref() {
+                if &node.data == key {
+                    return true;
+                }
+                if &node.data > key {
+                    return false;
+                }
+                let mut nxt = node.next.lock().unwrap();
+                Self::find(&mut Cursor(nxt), key)
+            } else {
+                false
+            }
+        }
     }
 }
 
