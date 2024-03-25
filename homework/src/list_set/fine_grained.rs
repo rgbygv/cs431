@@ -55,7 +55,8 @@ impl<T: Ord> Cursor<'_, T> {
                     return false;
                 }
                 let mut nxt = node.next.lock().unwrap();
-                Self::find(&mut Cursor(nxt), key)
+                *self = Cursor(nxt);
+                self.find(key)
             } else {
                 false
             }
