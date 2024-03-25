@@ -99,8 +99,7 @@ impl Request {
         if self.next.load(SeqCst).is_null() {
             if last
                 .compare_exchange(null_mut(), this, SeqCst, SeqCst)
-                .unwrap()
-                == this
+                .is_ok()
             {
                 return;
             }
@@ -205,18 +204,22 @@ impl Behavior {
     /// This ensures that the overall effect of the enqueue is atomic.
 
     fn schedule(self) {
-        for r in &self.requests {
+        let mut bahavior = self;
+        bahavior.requests.sort();
+        bahavior.count.store(bahavior.requests.len() + 1, SeqCst);
+
+        for r in &bahavior.requests {
             unsafe {
-                r.start_enqueue(&self);
+                r.start_enqueue(&bahavior);
             }
         }
 
-        for r in &self.requests {
+        for r in &bahavior.requests {
             unsafe {
                 r.finish_enqueue();
             }
         }
-        unsafe { Behavior::resolve_one(&self) }
+        unsafe { Behavior::resolve_one(&bahavior) }
     }
 
     /// Resolves a single outstanding request for `this`.
@@ -229,7 +232,7 @@ impl Behavior {
     /// `this` must be a valid behavior.
     unsafe fn resolve_one(this: *const Self) {
         unsafe {
-            if (*this).count.fetch_sub(1, SeqCst) != 0 {
+            if (*this).count.fetch_sub(1, SeqCst) != 1 {
                 return;
             }
             for r in &(*this).requests {
@@ -257,10 +260,11 @@ impl Behavior {
         F: for<'l> Fn(C::CownRefs<'l>) + Send + 'static,
     {
         let mut requests = cowns.requests();
-        requests.sort();
+        // requests.sort();
         Self {
             thunk: Box::new(move || f(unsafe { cowns.get_mut() })),
-            count: AtomicUsize::new(requests.len() + 1),
+            // count: AtomicUsize::new(requests.len() + 1),
+            count: AtomicUsize::new(0),
             requests,
         }
     }
