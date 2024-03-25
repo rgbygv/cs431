@@ -104,26 +104,12 @@ impl<T: Ord> ConcurrentSet<T> for FineGrainedListSet<T> {
             return false;
         }
         let mut lock = cursor.0;
-        // unsafe {
-        //     if let Some(node) = lock.as_mut() {
-        //         let to_remove = ptr::replace(&mut node.next, ptr::null_mut());
-
-        //         let next = node.next.lock().unwrap();
-        //         *lock = *next;
-        //     } else {
-        //         *lock = ptr::null_mut();
-        //     }
-        // }
         unsafe {
-            if let Some(node) = (lock).as_mut() {
-                let to_remove = ptr::replace(&mut *node.next.lock().unwrap(), ptr::null_mut());
-                let next_next = (*to_remove).next.lock().unwrap();
-                let _ = mem::replace(&mut *lock, *next_next);
-                // *lock = *next_next;
-                // ptr::write(lock, *next_next);
-                // Convert the raw pointer back into a Box to deallocate it
-                let _ = Box::from_raw(to_remove);
-            }
+            let mut node_ptr = *lock;
+            let mut next_guard = (*node_ptr).next.lock().unwrap();
+            *lock = *next_guard;
+            drop(next_guard);
+            let _ = Box::from_raw(node_ptr);
         }
         true
     }
