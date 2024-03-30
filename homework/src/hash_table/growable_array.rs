@@ -131,6 +131,7 @@ pub struct GrowableArray<T> {
 }
 
 const SEGMENT_LOGSIZE: usize = 10;
+const MASK: usize = (1 << SEGMENT_LOGSIZE) - 1;
 
 /// A fixed size array of atomic pointers to other `Segment<T>` or `T`.
 ///
@@ -188,6 +189,21 @@ impl<T> GrowableArray<T> {
     /// Returns the reference to the `Atomic` pointer at `index`. Allocates new segments if
     /// necessary.
     pub fn get<'g>(&self, mut index: usize, guard: &'g Guard) -> &'g Atomic<T> {
-        todo!()
+        // pub struct GrowableArray<T> {
+        //  root: Atomic<Segment<T>>,
+        // }
+        let mut root = &self.root;
+        // this height can't store enough node
+        if index > MASK {
+            // create a new root as parent
+            let mut new = Self::new();
+            unsafe {
+                let mut new_root = new.root.load(SeqCst, guard);
+                root.clone_into(&mut new_root.deref_mut().children[index & MASK]);
+                // new_root.deref_mut().children[index & MASK] = root.to_owned();
+                return new.get(index >> SEGMENT_LOGSIZE, guard);
+            }
+        }
+        unsafe { &root.load(SeqCst, guard).as_ref().unwrap().elements[index] }
     }
 }
