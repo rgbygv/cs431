@@ -235,9 +235,13 @@ impl Behavior {
             if (*this).count.fetch_sub(1, SeqCst) != 1 {
                 return;
             }
-            for r in &(*this).requests {
-                r.release();
-            }
+            let mut behavior = Box::from_raw(this.cast_mut());
+            rayon::spawn(move || {
+                (behavior.thunk)();
+                for r in &behavior.requests {
+                    r.release();
+                }
+            });
         }
     }
 }
