@@ -58,8 +58,10 @@ impl Request {
     /// `behavior` must be a valid raw pointer to the behavior for `self`, and this should be the
     /// only enqueueing of this request and behavior.
     unsafe fn start_enqueue(&self, behavior: *const Behavior) {
-        let last = self.target.last();
-        let prev = last.swap(self as *const Request as *mut Request, SeqCst);
+        let prev = self
+            .target
+            .last()
+            .swap(self as *const Request as *mut Request, SeqCst);
         if prev.is_null() {
             unsafe {
                 Behavior::resolve_one(behavior);
@@ -94,11 +96,16 @@ impl Request {
     ///
     /// `self` must have been actually completed.
     unsafe fn release(&self) {
-        let last = self.target.last();
-        let this = self as *const Request as *mut Request;
         if self.next.load(SeqCst).is_null() {
-            if last
-                .compare_exchange(null_mut(), this, SeqCst, SeqCst)
+            if self
+                .target
+                .last()
+                .compare_exchange(
+                    null_mut(),
+                    self as *const Request as *mut Request,
+                    SeqCst,
+                    SeqCst,
+                )
                 .is_ok()
             {
                 return;
