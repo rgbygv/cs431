@@ -211,22 +211,47 @@ impl Behavior {
     /// This ensures that the overall effect of the enqueue is atomic.
 
     fn schedule(self) {
-        let mut bahavior = self;
-        bahavior.requests.sort();
-        bahavior.count.store(bahavior.requests.len() + 1, SeqCst);
+        // let mut behavior = self;
+        // behavior.requests.sort();
+        // behavior.count.store(behavior.requests.len() + 1, SeqCst);
 
-        for r in &bahavior.requests {
-            unsafe {
-                r.start_enqueue(&bahavior);
+        // for r in &behavior.requests {
+        //     unsafe {
+        //         r.start_enqueue(&behavior as *const Behavior);
+        //     }
+        // }
+
+        // for r in &behavior.requests {
+        //     unsafe {
+        //         r.finish_enqueue();
+        //     }
+        // }
+        // unsafe { Behavior::resolve_one(&behavior as *const Behavior) }
+
+        // Convert `self` into a raw pointer from the beginning.
+        let behavior = Box::new(self);
+        let behavior_ptr = Box::into_raw(behavior);
+
+        // Sort the requests and set the counter.
+        unsafe {
+            (*behavior_ptr).requests.sort();
+            (*behavior_ptr)
+                .count
+                .store((*behavior_ptr).requests.len() + 1, SeqCst);
+
+            for r in &(*behavior_ptr).requests {
+                r.start_enqueue(behavior_ptr); // Providing the raw pointer
             }
-        }
 
-        for r in &bahavior.requests {
-            unsafe {
+            for r in &(*behavior_ptr).requests {
                 r.finish_enqueue();
             }
         }
-        unsafe { Behavior::resolve_one(&bahavior) }
+
+        unsafe { Behavior::resolve_one(behavior_ptr) } // Pass the raw pointer to resolve_one
+
+        // Forgetting the pointer to avoid double free.
+        // resolve_one will take ownership and responsibility for freeing it.
     }
 
     /// Resolves a single outstanding request for `this`.
