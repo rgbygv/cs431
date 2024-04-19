@@ -52,7 +52,9 @@ impl<V> SplitOrderedList<V> {
         index: usize,
         guard: &'s Guard,
     ) -> Cursor<'s, usize, MaybeUninit<V>> {
-        todo!()
+        let node_ptr = self.buckets.get(index, guard);
+
+        Cursor::new(node_ptr, node_ptr.load(SeqCst, &guard).with_tag(0))
     }
 
     /// Moves the bucket cursor returned from `lookup_bucket` to the position of the given key.
@@ -62,6 +64,11 @@ impl<V> SplitOrderedList<V> {
         key: &usize,
         guard: &'s Guard,
     ) -> (usize, bool, Cursor<'s, usize, MaybeUninit<V>>) {
+        let mut cursor = self.lookup_bucket(*key, guard);
+
+        let a = cursor.find_harris(key, guard);
+
+
         todo!()
     }
 
@@ -73,6 +80,7 @@ impl<V> SplitOrderedList<V> {
 impl<V> ConcurrentMap<usize, V> for SplitOrderedList<V> {
     fn lookup<'a>(&'a self, key: &usize, guard: &'a Guard) -> Option<&'a V> {
         Self::assert_valid_key(*key);
+        let (size, found, cursor) = self.find(key, guard);
         todo!()
     }
 
